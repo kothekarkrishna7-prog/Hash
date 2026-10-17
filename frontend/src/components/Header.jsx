@@ -2,8 +2,20 @@ import React, { useEffect, useState } from 'react';
 
 export const PRESETS = [
   {
+    id: 'get-user-success',
+    label: 'Preset 1: GET User Profile (200 OK + JSON)',
+    url: 'https://jsonplaceholder.typicode.com/users/1',
+    method: 'GET',
+    headers: [{ key: 'Accept', value: 'application/json' }],
+    body: '',
+    expectedStatus: 200,
+    requireValidJson: true,
+    requiredFields: ['id', 'name', 'username', 'email'],
+    maxTimeMs: 2500
+  },
+  {
     id: 'get-post-success',
-    label: 'Preset 1: GET Post (200 OK + JSON)',
+    label: 'Preset 2: GET Post (200 OK + JSON)',
     url: 'https://jsonplaceholder.typicode.com/posts/1',
     method: 'GET',
     headers: [{ key: 'Accept', value: 'application/json' }],

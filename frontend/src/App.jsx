@@ -12,7 +12,7 @@ const BACKEND_URL =
 export default function App() {
   // Request Configuration State
   const [method, setMethod] = useState('GET');
-  const [url, setUrl] = useState('https://jsonplaceholder.typicode.com/posts/1');
+  const [url, setUrl] = useState('https://jsonplaceholder.typicode.com/users/1');
   const [headers, setHeaders] = useState([
     { key: 'Accept', value: 'application/json' }
   ]);
@@ -21,7 +21,7 @@ export default function App() {
   // Validation Configuration State
   const [expectedStatus, setExpectedStatus] = useState('200');
   const [requireValidJson, setRequireValidJson] = useState(true);
-  const [requiredFields, setRequiredFields] = useState(['id', 'title', 'userId']);
+  const [requiredFields, setRequiredFields] = useState(['id', 'name', 'username', 'email']);
   const [maxTimeMs, setMaxTimeMs] = useState('2500');
 
   // Execution State
@@ -179,6 +179,17 @@ export default function App() {
     }
   };
 
+  // Handle URL change with smart field suggestions
+  const handleUrlChange = (newUrl) => {
+    setUrl(newUrl);
+    // If user changes to a users endpoint and had posts fields, switch intelligently
+    if (newUrl.includes('/users') && requiredFields.includes('title')) {
+      setRequiredFields(['id', 'name', 'username', 'email']);
+    } else if (newUrl.includes('/posts') && requiredFields.includes('username')) {
+      setRequiredFields(['id', 'title', 'userId']);
+    }
+  };
+
   return (
     <div className="app-container">
       <Header
@@ -194,7 +205,7 @@ export default function App() {
             method={method}
             setMethod={setMethod}
             url={url}
-            setUrl={setUrl}
+            setUrl={handleUrlChange}
             headers={headers}
             setHeaders={setHeaders}
             body={body}
@@ -214,6 +225,7 @@ export default function App() {
             setRequiredFields={setRequiredFields}
             maxTimeMs={maxTimeMs}
             setMaxTimeMs={setMaxTimeMs}
+            response={response}
           />
         </div>
 
@@ -230,6 +242,9 @@ export default function App() {
             validationReport={validationReport}
             hasResponse={Boolean(response)}
             executionError={executionError}
+            onRemoveField={(fieldToRemove) =>
+              setRequiredFields(requiredFields.filter((f) => f !== fieldToRemove))
+            }
           />
         </div>
       </main>

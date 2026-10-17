@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 export default function ValidationConfig({
   expectedStatus,
@@ -8,9 +8,30 @@ export default function ValidationConfig({
   requiredFields,
   setRequiredFields,
   maxTimeMs,
-  setMaxTimeMs
+  setMaxTimeMs,
+  response
 }) {
   const [fieldInput, setFieldInput] = useState('');
+
+  // Extract top-level keys if response body is a valid JSON object
+  const detectedKeys = useMemo(() => {
+    if (!response || !response.body) return [];
+    try {
+      const parsed = JSON.parse(response.body);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return Object.keys(parsed);
+      }
+    } catch {
+      // not JSON
+    }
+    return [];
+  }, [response]);
+
+  // Keys that are configured but missing from the actual response
+  const missingConfiguredKeys = useMemo(() => {
+    if (detectedKeys.length === 0) return [];
+    return requiredFields.filter((f) => !detectedKeys.includes(f));
+  }, [requiredFields, detectedKeys]);
 
   const handleAddField = () => {
     const trimmed = fieldInput.trim();
@@ -22,6 +43,16 @@ export default function ValidationConfig({
 
   const handleRemoveField = (field) => {
     setRequiredFields(requiredFields.filter((f) => f !== field));
+  };
+
+  const handleUseDetectedFields = () => {
+    if (detectedKeys.length > 0) {
+      setRequiredFields(detectedKeys.slice(0, 8));
+    }
+  };
+
+  const handleRemoveMissingFields = () => {
+    setRequiredFields(requiredFields.filter((f) => !missingConfiguredKeys.includes(f)));
   };
 
   return (
@@ -92,34 +123,79 @@ export default function ValidationConfig({
 
         {/* Required JSON Fields */}
         <div className="form-group">
-          <label htmlFor="required-fields-input" className="form-label">
-            <span>Required Top-Level JSON Fields</span>
-            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-              ({requiredFields.length} configured)
-            </span>
-          </label>
-          <div className="tags-input-container">
-            {requiredFields.map((field) => (
-              <span key={field} className="field-tag">
-                {field}
-                <button
-                  type="button"
-                  className="tag-remove"
-                  onClick={() => handleRemoveField(field)}
-                  aria-label={`Remove field ${field}`}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
+          <div className="form-label">
+            <span>
+              Required Top-Level JSON Fields{' '}
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                ({requiredFields.length} configured)
               </span>
-            ))}
+            </span>
+            {requiredFields.length > 0 && (
+              <button
+                type="button"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-subtle)',
+                  cursor: 'pointer',
+                  fontSize: '0.74rem',
+                  textDecoration: 'underline'
+                }}
+                onClick={() => setRequiredFields([])}
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          <div className="tags-input-container">
+            {requiredFields.map((field) => {
+              const isMissingInResponse = missingConfiguredKeys.includes(field);
+              return (
+                <span
+                  key={field}
+                  className="field-tag"
+                  style={
+                    isMissingInResponse
+                      ? {
+                          borderColor: 'var(--color-danger-border)',
+                          background: 'var(--color-danger-bg)',
+                          color: 'var(--color-danger)'
+                        }
+                      : {}
+                  }
+                  title={
+                    isMissingInResponse
+                      ? `Field "${field}" is not in the latest response.`
+                      : `Checking for field "${field}"`
+                  }
+                >
+                  {field}
+                  {isMissingInResponse && ' (missing)'}
+                  <button
+                    type="button"
+                    className="tag-remove"
+                    onClick={() => handleRemoveField(field)}
+                    aria-label={`Remove field ${field}`}
+                    style={isMissingInResponse ? { color: 'var(--color-danger)' } : {}}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </span>
+              );
+            })}
             <input
               id="required-fields-input"
               type="text"
               className="tags-text-input"
-              placeholder={requiredFields.length === 0 ? "Type field name (e.g. 'id') & press Enter" : 'Add field...'}
+              placeholder={
+                requiredFields.length === 0
+                  ? "Type field name (e.g. 'name') & press Enter"
+                  : 'Add field...'
+              }
               value={fieldInput}
               onChange={(e) => setFieldInput(e.target.value)}
               onKeyDown={(e) => {
@@ -130,6 +206,110 @@ export default function ValidationConfig({
               }}
             />
           </div>
+
+          {/* Quick Helper for Missing Configured Fields */}
+          {missingConfiguredKeys.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.35rem 0.65rem',
+                background: 'var(--color-warning-bg)',
+                border: '1px solid var(--color-warning-border)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.74rem',
+                color: 'var(--color-warning)'
+              }}
+            >
+              <span>
+                {missingConfiguredKeys.length} configured field(s) (e.g. {missingConfiguredKeys.join(', ')}) do not exist in the response.
+              </span>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{
+                  fontSize: '0.7rem',
+                  padding: '0.15rem 0.45rem',
+                  color: 'var(--color-warning)',
+                  borderColor: 'var(--color-warning-border)'
+                }}
+                onClick={handleRemoveMissingFields}
+              >
+                Remove Missing
+              </button>
+            </div>
+          )}
+
+          {/* Smart Auto-Detect Fields from Response */}
+          {detectedKeys.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.3rem',
+                marginTop: '0.2rem'
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.4rem'
+                }}
+              >
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Detected in response ({detectedKeys.length} keys):
+                </span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '0.18rem 0.5rem',
+                    color: 'var(--accent-cyan)',
+                    borderColor: 'rgba(0, 242, 254, 0.4)'
+                  }}
+                  onClick={handleUseDetectedFields}
+                >
+                  ⚡ Auto-Fill Response Fields
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                {detectedKeys.map((k) => {
+                  const isAdded = requiredFields.includes(k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      className="btn-secondary"
+                      style={{
+                        fontSize: '0.7rem',
+                        padding: '0.15rem 0.45rem',
+                        background: isAdded ? 'rgba(0, 242, 254, 0.12)' : undefined,
+                        borderColor: isAdded ? 'var(--accent-cyan)' : undefined,
+                        color: isAdded ? 'var(--accent-cyan)' : undefined
+                      }}
+                      onClick={() => {
+                        if (!isAdded) {
+                          setRequiredFields([...requiredFields, k]);
+                        } else {
+                          handleRemoveField(k);
+                        }
+                      }}
+                    >
+                      {isAdded ? '✓ ' : '+ '}
+                      {k}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <span className="form-helper">
             Each property is checked for presence on the top-level JSON response object.
           </span>

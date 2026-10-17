@@ -3,7 +3,8 @@ import React from 'react';
 export default function TestSummary({
   validationReport,
   hasResponse,
-  executionError
+  executionError,
+  onRemoveField
 }) {
   // If execution failed (e.g. network failure, timeout, SSRF blocked), no assertions are evaluated (FR-27, FR-34)
   if (executionError) {
@@ -171,6 +172,23 @@ export default function TestSummary({
                 <div className="assertion-explanation">
                   {assertion.explanation}
                 </div>
+              )}
+
+              {!assertion.passed && assertion.field && onRemoveField && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '0.2rem 0.5rem',
+                    color: 'var(--color-danger)',
+                    borderColor: 'var(--color-danger-border)',
+                    alignSelf: 'flex-start'
+                  }}
+                  onClick={() => onRemoveField(assertion.field)}
+                >
+                  ✕ Remove "{assertion.field}" from assertions
+                </button>
               )}
             </div>
           ))}
