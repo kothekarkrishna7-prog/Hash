@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # API Sentinel PRO 🛡️
 
 > **API Sentinel PRO** is a lightweight, modern web-based developer tool designed to quickly send HTTP requests to public APIs, inspect responses, run deterministic automated validation checks with instant pass/fail summaries, and manage persistent request history with user authentication and profile metrics.
@@ -170,3 +171,6 @@ npm run build
 
 ## 📄 License
 MIT License. Created for the API Sentinel Project.
+=======
+# Hash
+>>>>>>> 3b4e5536f1814c53dd2df56dfcedd48c45fb32e5
