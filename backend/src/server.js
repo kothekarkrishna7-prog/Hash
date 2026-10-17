@@ -99,10 +99,13 @@ app.post('/api/send', optionalAuth, async (req, res) => {
     method = 'GET',
     headers = {},
     body = '',
-    totalChecks = 0,
-    passedChecks = 0,
-    failedChecks = 0,
-    expectedStatus = null
+    expectedStatus = null,
+    requireValidJson = false,
+    requiredFields = [],
+    maxTimeMs = null,
+    totalChecks: explicitTotal,
+    passedChecks: explicitPassed,
+    failedChecks: explicitFailed
   } = req.body || {};
 
   const currentUserId = req.user?.id || null;
@@ -124,6 +127,76 @@ app.post('/api/send', optionalAuth, async (req, res) => {
       executionResult = 'http_server_error';
     }
 
+    // Evaluate validations
+    let totalChecks = 0;
+    let passedChecks = 0;
+    let failedChecks = 0;
+
+    if (explicitTotal !== undefined && explicitPassed !== undefined && explicitFailed !== undefined) {
+      totalChecks = Number(explicitTotal) || 0;
+      passedChecks = Number(explicitPassed) || 0;
+      failedChecks = Number(explicitFailed) || 0;
+    } else {
+      // 1. Expected HTTP Status Code
+      if (expectedStatus !== null && expectedStatus !== undefined && String(expectedStatus).trim() !== '') {
+        totalChecks++;
+        const expNum = parseInt(expectedStatus, 10);
+        if (result.status === expNum) {
+          passedChecks++;
+        } else {
+          failedChecks++;
+        }
+      }
+
+      // 2. Valid JSON
+      let parsedJson = null;
+      let isJson = false;
+      if (requireValidJson) {
+        totalChecks++;
+        try {
+          parsedJson = JSON.parse(result.body);
+          isJson = true;
+          passedChecks++;
+        } catch {
+          isJson = false;
+          failedChecks++;
+        }
+      } else {
+        try {
+          parsedJson = JSON.parse(result.body);
+          isJson = true;
+        } catch {
+          isJson = false;
+        }
+      }
+
+      // 3. Required Fields in JSON
+      if (Array.isArray(requiredFields) && requiredFields.length > 0) {
+        for (const f of requiredFields) {
+          const field = String(f || '').trim();
+          if (field) {
+            totalChecks++;
+            if (isJson && parsedJson && typeof parsedJson === 'object' && field in parsedJson) {
+              passedChecks++;
+            } else {
+              failedChecks++;
+            }
+          }
+        }
+      }
+
+      // 4. Maximum Response Time
+      if (maxTimeMs !== null && maxTimeMs !== undefined && String(maxTimeMs).trim() !== '') {
+        totalChecks++;
+        const maxMs = parseInt(maxTimeMs, 10);
+        if (!isNaN(maxMs) && result.timeMs <= maxMs) {
+          passedChecks++;
+        } else {
+          failedChecks++;
+        }
+      }
+    }
+
     // Save to history if user is authenticated
     if (currentUserId) {
       try {
@@ -142,17 +215,23 @@ app.post('/api/send', optionalAuth, async (req, res) => {
           totalChecks,
           passedChecks,
           failedChecks,
-          expectedStatus
+          expectedStatus: expectedStatus ? parseInt(expectedStatus, 10) : null
         });
       } catch (histErr) {
-        console.error('[History] Failed to record request:', histErr.message);
+        console.error('[History] Failed to record request:', histErr);
       }
     }
 
     // Per Section 11.5: Target response (even 4xx/5xx) returns backend status 200
     res.status(200).json({
       ...result,
-      historyId
+      historyId,
+      historySaved: Boolean(historyId),
+      validationSummary: {
+        totalChecks,
+        passedChecks,
+        failedChecks
+      }
     });
   } catch (err) {
     const status = err.status || 500;
@@ -160,13 +239,20 @@ app.post('/api/send', optionalAuth, async (req, res) => {
     const errorMessage =
       err.message || 'An unexpected error occurred while executing the request.';
 
-    // Save failed request to history if user is authenticated (Acceptance Criteria 10)
+    // Save failed request to history if user is authenticated
     if (currentUserId && url) {
       try {
         let execRes = 'network_error';
         if (errorCode === 'TIMEOUT') execRes = 'timeout';
         else if (errorCode === 'BLOCKED_DESTINATION') execRes = 'blocked_destination';
         else if (errorCode === 'INVALID_INPUT') execRes = 'invalid_input';
+
+        let totalChecks = 0;
+        let failedChecks = 0;
+        if (expectedStatus !== null && expectedStatus !== undefined && String(expectedStatus).trim() !== '') {
+          totalChecks = 1;
+          failedChecks = 1;
+        }
 
         historyId = recordRequestHistory(currentUserId, {
           url,
@@ -180,15 +266,15 @@ app.post('/api/send', optionalAuth, async (req, res) => {
           responseHeaders: {},
           responseBody: '',
           sizeBytes: 0,
-          totalChecks: 0,
+          totalChecks,
           passedChecks: 0,
-          failedChecks: 0,
-          expectedStatus,
+          failedChecks,
+          expectedStatus: expectedStatus ? parseInt(expectedStatus, 10) : null,
           errorMessage,
           errorCode
         });
       } catch (histErr) {
-        console.error('[History] Failed to record failed request:', histErr.message);
+        console.error('[History] Failed to record failed request:', histErr);
       }
     }
 
@@ -198,7 +284,8 @@ app.post('/api/send', optionalAuth, async (req, res) => {
         message: errorMessage
       },
       timeMs: err.timeMs,
-      historyId
+      historyId,
+      historySaved: Boolean(historyId)
     });
   }
 });

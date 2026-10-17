@@ -9,6 +9,7 @@ export default function ResponseViewer({
 }) {
   const [activeTab, setActiveTab] = useState('formatted'); // 'formatted' | 'raw' | 'headers'
   const [copied, setCopied] = useState(false);
+  const [headersCopied, setHeadersCopied] = useState(false);
 
   const handleCopyBody = () => {
     if (!response || response.body === undefined) return;
@@ -17,7 +18,17 @@ export default function ResponseViewer({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 1. Loading State
+  const handleCopyHeaders = () => {
+    if (!response || !response.headers) return;
+    const text = Object.entries(response.headers)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join('\n');
+    navigator.clipboard.writeText(text);
+    setHeadersCopied(true);
+    setTimeout(() => setHeadersCopied(false), 2000);
+  };
+
+  // 1. Loading State with Skeleton Shimmer
   if (isLoading) {
     return (
       <div className="card">
@@ -29,19 +40,25 @@ export default function ResponseViewer({
             </svg>
             Response Viewer
           </h2>
-          <span style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--accent-solid)' }}>
             Executing outbound request...
           </span>
         </div>
-        <div className="state-box">
-          <div className="spinner" />
-          <div className="state-title">Dispatching Target Request</div>
-          <div className="state-desc">
-            The API Sentinel backend is applying SSRF security guards, resolving DNS, and performing outbound fetch.
+
+        {/* Skeleton Shimmer Layout */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          <div className="skeleton-shimmer skeleton-tile" style={{ borderRadius: 'var(--radius-md)' }} />
+          <div className="state-box" style={{ padding: '1.75rem 1rem' }}>
+            <div className="spinner" />
+            <div className="state-title" style={{ marginTop: '0.5rem' }}>Dispatching Target Request</div>
+            <div className="state-desc">
+              Applying SSRF security guards, resolving DNS, and performing outbound fetch...
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-solid)' }}>
+              Elapsed: {elapsedMs} ms
+            </div>
           </div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
-            Elapsed: {elapsedMs} ms
-          </div>
+          <div className="skeleton-shimmer skeleton-box" style={{ borderRadius: 'var(--radius-md)' }} />
         </div>
       </div>
     );
@@ -101,7 +118,7 @@ export default function ResponseViewer({
     );
   }
 
-  // 3. Empty State (FR-20)
+  // 3. Illustrated Developer Empty State
   if (!response) {
     return (
       <div className="card">
@@ -114,19 +131,18 @@ export default function ResponseViewer({
             </svg>
             Response Viewer
           </h2>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Awaiting execution</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Awaiting request</span>
         </div>
         <div className="state-box">
           <div className="state-icon">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="m9 12 2 2 4-4" />
             </svg>
           </div>
-          <div className="state-title">Ready for API Inspection</div>
+          <div className="state-title">Send your first request to see results here</div>
           <div className="state-desc">
-            Configure your target URL above, set your expected validation criteria, and click <strong>Send Request</strong> to inspect real responses.
+            Enter a target URL above, optionally configure assertions or load a preset, and hit <strong>Send Request</strong> to inspect real response status, headers, and payloads.
           </div>
         </div>
       </div>
@@ -294,8 +310,12 @@ export default function ResponseViewer({
       {activeTab === 'headers' && (
         <div className="code-viewer-container">
           <div className="viewer-top-bar">
-            <span>HTTP Response Headers</span>
-            <span>{headerKeys.length} items</span>
+            <span>HTTP Response Headers ({headerKeys.length})</span>
+            {headerKeys.length > 0 && (
+              <button type="button" className="btn-copy" onClick={handleCopyHeaders}>
+                {headersCopied ? '✓ Copied!' : 'Copy Headers'}
+              </button>
+            )}
           </div>
           <div style={{ maxHeight: '380px', overflow: 'auto' }}>
             <table className="headers-table">

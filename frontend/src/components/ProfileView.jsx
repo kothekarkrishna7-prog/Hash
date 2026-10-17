@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function ProfileView({ backendUrl, onNavigateToTester }) {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, authFetch } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState(null);
 
   // Edit Name state
   const [editName, setEditName] = useState('');
@@ -27,21 +28,25 @@ export default function ProfileView({ backendUrl, onNavigateToTester }) {
   const [deleteError, setDeleteError] = useState('');
 
   const fetchProfile = useCallback(async () => {
+    setLoading(true);
+    setProfileError(null);
     try {
-      const res = await fetch(`${backendUrl}/api/user/profile`, {
-        credentials: 'include'
-      });
+      const res = await authFetch(`${backendUrl}/api/user/profile`);
       if (res.ok) {
         const data = await res.json();
         setProfileData(data);
         setEditName(data.user.name);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `Failed to fetch profile (HTTP ${res.status})`);
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err);
+      setProfileError(err.message || 'Failed to retrieve profile data.');
     } finally {
       setLoading(false);
     }
-  }, [backendUrl]);
+  }, [backendUrl, authFetch]);
 
   useEffect(() => {
     fetchProfile();
@@ -90,10 +95,9 @@ export default function ProfileView({ backendUrl, onNavigateToTester }) {
 
     setSavingPassword(true);
     try {
-      const res = await fetch(`${backendUrl}/api/user/password`, {
+      const res = await authFetch(`${backendUrl}/api/user/password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
       });
       const data = await res.json();
@@ -123,10 +127,9 @@ export default function ProfileView({ backendUrl, onNavigateToTester }) {
     setDeleting(true);
     setDeleteError('');
     try {
-      const res = await fetch(`${backendUrl}/api/user/account`, {
+      const res = await authFetch(`${backendUrl}/api/user/account`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ currentPassword: deletePassword })
       });
       const data = await res.json();
@@ -180,6 +183,11 @@ export default function ProfileView({ backendUrl, onNavigateToTester }) {
 
   return (
     <div className="profile-page">
+      {profileError && (
+        <div className="alert alert-danger" style={{ marginBottom: '1.25rem' }}>
+          {profileError}
+        </div>
+      )}
       <div className="profile-grid">
         {/* Left Column: Account Info & Edit Profile */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

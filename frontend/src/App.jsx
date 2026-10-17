@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import './App.css';
 import Header from './components/Header.jsx';
 import RequestBuilder from './components/RequestBuilder.jsx';
 import ValidationConfig from './components/ValidationConfig.jsx';
@@ -12,13 +13,16 @@ import { runValidation } from './utils/validationEngine.js';
 import { useAuth } from './context/AuthContext.jsx';
 
 const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+  import.meta.env.VITE_BACKEND_URL || '';
 
 export default function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authFetch } = useAuth();
 
   // Navigation Tab: 'dashboard' | 'tester' | 'history' | 'profile'
   const [activeTab, setActiveTab] = useState('tester');
+
+  // Trigger counter to refresh History and Dashboard automatically
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   // Auth Modal state
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -72,21 +76,24 @@ export default function App() {
   // Sync validation updates to history record if one exists
   useEffect(() => {
     if (currentHistoryId && validationReport && isAuthenticated) {
-      fetch(`${BACKEND_URL}/api/history/${currentHistoryId}/validation`, {
+      authFetch(`${BACKEND_URL}/api/history/${currentHistoryId}/validation`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           totalChecks: validationReport.total,
           passedChecks: validationReport.passed,
           failedChecks: validationReport.failed,
           expectedStatus: expectedStatus ? parseInt(expectedStatus, 10) : null
         })
-      }).catch(() => {
-        // non-blocking
-      });
+      })
+        .then(() => {
+          setHistoryRefreshKey((k) => k + 1);
+        })
+        .catch(() => {
+          // non-blocking
+        });
     }
-  }, [currentHistoryId, validationReport, expectedStatus, isAuthenticated]);
+  }, [currentHistoryId, validationReport, expectedStatus, isAuthenticated, authFetch]);
 
   // Open Auth Modal helper
   const handleOpenAuthModal = (mode = 'login') => {
@@ -224,18 +231,20 @@ export default function App() {
     }, 50);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/send`, {
+      const res = await authFetch(`${BACKEND_URL}/api/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        credentials: 'include', // Sends HttpOnly session cookie
         body: JSON.stringify({
           url: trimmedUrl,
           method,
           headers: headersObject,
           body: method !== 'GET' ? body : '',
-          expectedStatus: expectedStatus ? parseInt(expectedStatus, 10) : null
+          expectedStatus: expectedStatus ? parseInt(expectedStatus, 10) : null,
+          requireValidJson,
+          requiredFields,
+          maxTimeMs
         })
       });
 
@@ -245,6 +254,9 @@ export default function App() {
       if (data.historyId) {
         setCurrentHistoryId(data.historyId);
       }
+
+      // Refresh Dashboard and History views
+      setHistoryRefreshKey((k) => k + 1);
 
       if (data.error) {
         // Request Execution Failure (FR-13, FR-14, FR-21, FR-34)
@@ -259,9 +271,10 @@ export default function App() {
       clearInterval(timerRef.current);
       setExecutionError({
         code: 'PROXY_COMMUNICATION_ERROR',
-        message: `Failed to connect to API Sentinel backend at ${BACKEND_URL}: ${err.message}. Ensure the backend service is running.`
+        message: `Failed to connect to API Sentinel backend at ${BACKEND_URL || 'local server'}: ${err.message}. Ensure the backend service is running.`
       });
       setResponse(null);
+      setHistoryRefreshKey((k) => k + 1);
     } finally {
       setIsLoading(false);
     }
@@ -282,6 +295,8 @@ export default function App() {
       {activeTab === 'dashboard' && (
         <DashboardView
           backendUrl={BACKEND_URL}
+          refreshTrigger={historyRefreshKey}
+          onOpenAuthModal={() => handleOpenAuthModal('login')}
           onNavigateToTester={() => setActiveTab('tester')}
           onNavigateToHistory={() => {
             if (!isAuthenticated) handleOpenAuthModal('login');
@@ -295,7 +310,7 @@ export default function App() {
       {activeTab === 'tester' && (
         <main className="main-layout">
           {/* Left Column: Request Builder & Validation Rules */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="view-column">
             <RequestBuilder
               method={method}
               setMethod={setMethod}
@@ -325,7 +340,7 @@ export default function App() {
           </div>
 
           {/* Right Column: Response Viewer & Test Summary */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="view-column">
             <ResponseViewer
               response={response}
               executionError={executionError}
@@ -349,6 +364,8 @@ export default function App() {
       {activeTab === 'history' && (
         <HistoryView
           backendUrl={BACKEND_URL}
+          refreshTrigger={historyRefreshKey}
+          onOpenAuthModal={() => handleOpenAuthModal('login')}
           onRerunRequest={handleRerunRequest}
           onNavigateToTester={() => setActiveTab('tester')}
         />
@@ -370,11 +387,14 @@ export default function App() {
       />
 
       <footer className="app-footer">
-        <div>
+        <div className="footer-brand">
           <strong>API Sentinel PRO</strong> — Engineered for fast, secure API verification, automated assertion testing, and persistent history logging.
         </div>
-        <div>
-          SQLite Persistent Storage • Secure HttpOnly Sessions • SSRF Protection RFCs • Deterministic Browser Validation
+        <div className="footer-chips">
+          <span className="footer-chip">SQLite Persistent Storage</span>
+          <span className="footer-chip">Secure HttpOnly Sessions</span>
+          <span className="footer-chip">SSRF Protection</span>
+          <span className="footer-chip">Deterministic Browser Validation</span>
         </div>
       </footer>
     </div>

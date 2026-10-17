@@ -21,6 +21,23 @@ export default function RequestBuilder({
   bodyError
 }) {
   const [activeTab, setActiveTab] = useState('headers'); // 'headers' | 'body'
+  const [curlCopied, setCurlCopied] = useState(false);
+
+  const handleCopyCurl = () => {
+    let curl = `curl -X ${method} "${url || 'https://api.example.com'}"`;
+    headers.forEach((h) => {
+      if (h.key.trim()) {
+        curl += ` \\\n  -H "${h.key.trim()}: ${h.value}"`;
+      }
+    });
+    if (method !== 'GET' && body) {
+      const escaped = body.replace(/"/g, '\\"');
+      curl += ` \\\n  -d "${escaped}"`;
+    }
+    navigator.clipboard.writeText(curl);
+    setCurlCopied(true);
+    setTimeout(() => setCurlCopied(false), 2000);
+  };
 
   const handleAddHeader = () => {
     setHeaders([...headers, { key: '', value: '' }]);
@@ -66,9 +83,18 @@ export default function RequestBuilder({
           </svg>
           Request Builder
         </h2>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          Target public HTTP/HTTPS endpoint
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <button
+            id="copy-curl"
+            type="button"
+            className="btn-secondary"
+            onClick={handleCopyCurl}
+            title="Copy as cURL command"
+            style={{ fontSize: '0.74rem', padding: '0.28rem 0.65rem' }}
+          >
+            {curlCopied ? '✓ Copied cURL' : 'Copy cURL'}
+          </button>
+        </div>
       </div>
 
       {/* URL & Method Row */}
@@ -125,10 +151,10 @@ export default function RequestBuilder({
             <>
               <div
                 style={{
-                  width: '14px',
-                  height: '14px',
-                  border: '2px solid rgba(8,12,20,0.3)',
-                  borderTopColor: '#080C14',
+                  width: '13px',
+                  height: '13px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: '#FFFFFF',
                   borderRadius: '50%',
                   animation: 'spin 0.6s linear infinite'
                 }}

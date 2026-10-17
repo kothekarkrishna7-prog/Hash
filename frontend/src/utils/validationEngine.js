@@ -67,7 +67,6 @@ export function runValidation(response, config = {}) {
   // Pre-parse JSON body to share across JSON syntax and field assertions (PRD 12.3, 12.5)
   let parsedJson = null;
   let isJsonValid = false;
-  let jsonParseError = null;
   const rawBody = typeof response.body === 'string' ? response.body : '';
   const trimmedBody = rawBody.trim();
 
@@ -75,8 +74,7 @@ export function runValidation(response, config = {}) {
     try {
       parsedJson = JSON.parse(trimmedBody);
       isJsonValid = true;
-    } catch (err) {
-      jsonParseError = err.message;
+    } catch {
       isJsonValid = false;
     }
   } else {

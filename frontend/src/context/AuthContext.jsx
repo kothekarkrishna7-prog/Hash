@@ -1,25 +1,41 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem('sentinel_token') || '');
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
 
   // Check existing session on application load
   const checkSession = useCallback(async () => {
     try {
+      const storedToken = localStorage.getItem('sentinel_token') || '';
+      const headers = {};
+      if (storedToken) {
+        headers['Authorization'] = `Bearer ${storedToken}`;
+      }
+
       const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
+        headers,
         credentials: 'include'
       });
+
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+        const activeToken = data.token || storedToken;
+        if (activeToken) {
+          localStorage.setItem('sentinel_token', activeToken);
+          setToken(activeToken);
+        }
       } else {
         setUser(null);
+        localStorage.removeItem('sentinel_token');
+        setToken('');
       }
     } catch {
       setUser(null);
@@ -31,6 +47,23 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     checkSession();
   }, [checkSession]);
+
+  // Authenticated fetch wrapper (combines HttpOnly Cookie + Bearer token)
+  const authFetch = useCallback(
+    (url, options = {}) => {
+      const headers = { ...(options.headers || {}) };
+      const currentToken = localStorage.getItem('sentinel_token') || token;
+      if (currentToken && !headers['Authorization'] && !headers['authorization']) {
+        headers['Authorization'] = `Bearer ${currentToken}`;
+      }
+      return fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers
+      });
+    },
+    [token]
+  );
 
   // Register
   const register = async (name, email, password, confirmPassword) => {
@@ -49,6 +82,10 @@ export function AuthProvider({ children }) {
       }
 
       setUser(data.user);
+      if (data.token) {
+        localStorage.setItem('sentinel_token', data.token);
+        setToken(data.token);
+      }
       return { success: true };
     } catch (err) {
       setAuthError(err.message);
@@ -73,6 +110,10 @@ export function AuthProvider({ children }) {
       }
 
       setUser(data.user);
+      if (data.token) {
+        localStorage.setItem('sentinel_token', data.token);
+        setToken(data.token);
+      }
       return { success: true };
     } catch (err) {
       setAuthError(err.message);
@@ -83,13 +124,19 @@ export function AuthProvider({ children }) {
   // Logout
   const logout = async () => {
     try {
+      const storedToken = localStorage.getItem('sentinel_token') || token;
+      const headers = {};
+      if (storedToken) headers['Authorization'] = `Bearer ${storedToken}`;
       await fetch(`${BACKEND_URL}/api/auth/logout`, {
         method: 'POST',
+        headers,
         credentials: 'include'
       });
     } catch {
       // Ignore network errors on logout
     } finally {
+      localStorage.removeItem('sentinel_token');
+      setToken('');
       setUser(null);
     }
   };
@@ -97,10 +144,9 @@ export function AuthProvider({ children }) {
   // Update Profile Name
   const updateProfile = async (name) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/user/profile`, {
+      const res = await authFetch(`${BACKEND_URL}/api/user/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ name })
       });
       const data = await res.json();
@@ -118,6 +164,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        token,
         loading,
         authError,
         setAuthError,
@@ -125,6 +172,7 @@ export function AuthProvider({ children }) {
         register,
         logout,
         updateProfile,
+        authFetch,
         refreshSession: checkSession,
         isAuthenticated: Boolean(user),
         backendUrl: BACKEND_URL

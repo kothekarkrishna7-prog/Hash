@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 
-export const PRESETS = [
+const PRESETS = [
   {
     id: 'get-user-success',
     label: 'Preset 1: GET User Profile (200 OK + JSON)',
@@ -86,24 +86,48 @@ export default function Header({
   const { user, logout, isAuthenticated } = useAuth();
   const [backendStatus, setBackendStatus] = useState('checking'); // 'online' | 'offline' | 'checking'
 
-  const checkHealth = async () => {
-    try {
-      const res = await fetch(`${backendUrl}/health`, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        setBackendStatus('online');
-      } else {
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch(`${backendUrl}/health`, { signal: AbortSignal.timeout(3000) });
+        if (res.ok) {
+          setBackendStatus('online');
+        } else {
+          setBackendStatus('offline');
+        }
+      } catch {
         setBackendStatus('offline');
       }
-    } catch {
-      setBackendStatus('offline');
-    }
-  };
+    };
 
-  useEffect(() => {
     checkHealth();
     const interval = setInterval(checkHealth, 15000);
     return () => clearInterval(interval);
   }, [backendUrl]);
+
+  const [theme, setTheme] = useState(() => {
+    try {
+      return (
+        localStorage.getItem('sentinel_theme') ||
+        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+      );
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    try {
+      localStorage.setItem('sentinel_theme', nextTheme);
+    } catch {}
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const userInitials = (user?.name || 'U')
     .split(' ')
@@ -202,6 +226,34 @@ export default function Header({
 
         {/* User Auth & Health Status */}
         <div className="header-actions">
+          {/* Light / Dark Mode Toggle */}
+          <button
+            id="theme-toggle"
+            type="button"
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+          >
+            {theme === 'dark' ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </button>
+
           <div
             className="backend-status-pill"
             title={`Backend health check endpoint: ${backendUrl}/health`}
@@ -229,8 +281,7 @@ export default function Header({
               </button>
               <button
                 type="button"
-                className="btn-secondary"
-                style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem' }}
+                className="btn-secondary btn-compact"
                 onClick={logout}
                 title="Log out"
               >
@@ -238,19 +289,17 @@ export default function Header({
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <div className="auth-buttons">
               <button
                 type="button"
-                className="btn-secondary"
-                style={{ fontSize: '0.8rem', padding: '0.42rem 0.85rem' }}
+                className="btn-secondary btn-compact"
                 onClick={() => onOpenAuthModal?.('login')}
               >
                 Sign In
               </button>
               <button
                 type="button"
-                className="btn-send"
-                style={{ fontSize: '0.8rem', padding: '0.42rem 0.85rem' }}
+                className="btn-send btn-compact"
                 onClick={() => onOpenAuthModal?.('register')}
               >
                 Register
@@ -263,8 +312,8 @@ export default function Header({
       {/* Sub-header Toolbar when on API Tester tab */}
       {activeTab === 'tester' && (
         <div className="tester-sub-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Quick Presets:</span>
+          <div className="sub-bar-group">
+            <span className="sub-bar-label">Quick Presets</span>
             <select
               id="preset-loader"
               className="preset-select"
@@ -289,16 +338,21 @@ export default function Header({
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="sub-bar-group">
             {isAuthenticated ? (
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-success)' }}></span>
+              <span className="history-status active">
+                <span className="dot-live"></span>
                 History logging active
               </span>
             ) : (
               <span
-                style={{ fontSize: '0.75rem', color: 'var(--color-warning)', cursor: 'pointer' }}
+                className="history-status hint"
+                role="button"
+                tabIndex={0}
                 onClick={() => onOpenAuthModal?.('login')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') onOpenAuthModal?.('login');
+                }}
               >
                 💡 Sign in to save request history
               </span>
@@ -306,10 +360,9 @@ export default function Header({
             <button
               id="btn-reset-form"
               type="button"
-              className="btn-secondary"
+              className="btn-secondary btn-compact"
               onClick={onReset}
               title="Reset form to defaults"
-              style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem' }}
             >
               Reset
             </button>

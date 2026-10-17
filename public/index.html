@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="API Sentinel — Send HTTP requests, inspect responses and run pass/fail checks. Fast, zero-dependency developer testing tool." />
+    <title>API Sentinel | Send · Inspect · Validate</title>
+
+    <!-- Inline SVG favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%25' stop-color='%236366f1'/><stop offset='100%25' stop-color='%23ec4899'/></linearGradient></defs><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' fill='url(%23g)' opacity='.9'/><path d='m9 12 2 2 4-4' stroke='white' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-layout">
+
+      <!-- ═══════════════════════════════════════════════
+           HEADER + HERO
+           ═══════════════════════════════════════════════ -->
+      <header class="app-header" role="banner">
+        <!-- Brand -->
+        <div class="header-left">
+          <div class="brand-logo" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(255,255,255,0.25)" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="m9 12 2 2 4-4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="brand-meta">
+            <div class="brand-title-row">
+              <h1 class="brand-name">API Sentinel</h1>
+              <span class="badge-pro" aria-label="Version PRO 1.2">PRO v1.2</span>
+            </div>
+            <p class="brand-tagline">Send. Inspect. Validate.</p>
+          </div>
+        </div>
+
+        <!-- Right: hero badges + theme toggle -->
+        <div class="header-right">
+          <div class="hero-badges" role="list" aria-label="Key features">
+            <span class="badge-hero real" role="listitem">
+              <span class="pulse-dot" aria-hidden="true"></span>
+              Real requests
+            </span>
+            <span class="badge-hero instant" role="listitem">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Instant checks
+            </span>
+            <span class="badge-hero report" role="listitem">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              Pass/fail report
+            </span>
+          </div>
+
+          <button id="theme-toggle" type="button" class="theme-toggle" title="Toggle theme" aria-label="Toggle light/dark theme">
+            <!-- Icon populated by ui.js -->
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- ═══════════════════════════════════════════════
+           MAIN CONTENT GRID
+           ═══════════════════════════════════════════════ -->
+      <main class="grid-container" role="main">
+
+        <!-- ─────────────────────────────────────────────
+             LEFT COLUMN
+             ───────────────────────────────────────────── -->
+        <div class="column-pane">
+
+          <!-- ── REQUEST BUILDER CARD ── -->
+          <section class="card card-request" aria-labelledby="request-card-title">
+            <div class="card-header">
+              <div class="card-title-group">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                <h2 id="request-card-title" class="card-title">Request Builder</h2>
+              </div>
+              <div class="card-actions">
+                <button
+                  id="example"
+                  type="button"
+                  class="btn-ghost link"
+                  data-tooltip="Load a sample GET request with checks"
+                  aria-label="Load example GET request"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Load example
+                </button>
+                <button
+                  id="copy-curl"
+                  type="button"
+                  class="btn-ghost"
+                  data-tooltip="Copy request as a cURL command"
+                  aria-label="Copy request as cURL command"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy cURL
+                </button>
+              </div>
+            </div>
+
+            <!-- COMMAND BAR -->
+            <div class="command-bar" role="group" aria-label="HTTP request builder">
+              <label for="method" class="sr-only">HTTP Method</label>
+              <select
+                id="method"
+                class="method-select GET"
+                aria-label="HTTP method"
+                data-tooltip="HTTP verb"
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+
+              <div class="url-wrapper">
+                <label for="url" class="sr-only">Target API URL</label>
+                <input
+                  id="url"
+                  type="url"
+                  class="url-input"
+                  placeholder="https://api.example.com/v1/resource"
+                  value="https://jsonplaceholder.typicode.com/users/1"
+                  aria-label="Target API URL"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </div>
+
+              <button
+                id="send"
+                type="button"
+                class="btn-send"
+                aria-label="Send HTTP request"
+                data-tooltip="Send request (Enter)"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                <span>Send</span>
+              </button>
+            </div>
+
+            <!-- ERROR ALERT -->
+            <div id="error" class="error-banner hidden" role="alert" aria-live="assertive"></div>
+
+            <!-- TABS: Headers / Body -->
+            <div class="tabs-bar" role="tablist" aria-label="Request options">
+              <button
+                id="tab-headers"
+                type="button"
+                class="tab-btn active"
+                role="tab"
+                aria-selected="true"
+                aria-controls="headers-panel"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+                Headers
+              </button>
+              <button
+                id="tab-body"
+                type="button"
+                class="tab-btn"
+                role="tab"
+                aria-selected="false"
+                aria-controls="body-panel"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                Body
+              </button>
+            </div>
+
+            <!-- HEADERS PANEL -->
+            <div id="headers-panel" class="tab-content" role="tabpanel" aria-labelledby="tab-headers">
+              <div id="headers" class="headers-list" aria-label="Request headers list"></div>
+              <button
+                id="add-header"
+                type="button"
+                class="btn-secondary btn-sm"
+                aria-label="Add a new request header"
+                data-tooltip="Add a key-value header row"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Header
+              </button>
+            </div>
+
+            <!-- BODY PANEL -->
+            <div id="body-panel" class="tab-content hidden-tab" role="tabpanel" aria-labelledby="tab-body">
+              <label for="body" class="sr-only">Request body JSON</label>
+              <textarea
+                id="body"
+                class="body-textarea"
+                rows="7"
+                placeholder='{&#10;  "title": "New item",&#10;  "userId": 1&#10;}'
+                aria-label="Request body — JSON payload"
+                spellcheck="false"
+                autocomplete="off"
+              ></textarea>
+              <span class="field-hint">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Used for POST, PUT, PATCH and DELETE requests.
+              </span>
+            </div>
+          </section>
+
+          <!-- ── CHECKS CARD ── -->
+          <section class="card card-checks" aria-labelledby="checks-card-title">
+            <div class="card-header">
+              <div class="card-title-group">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <h2 id="checks-card-title" class="card-title">Pass / Fail Checks</h2>
+              </div>
+              <button
+                id="basic-checks"
+                type="button"
+                aria-label="Add basic status, JSON, and time checks"
+                data-tooltip="Adds status 200, valid JSON &amp; time &lt;2500 ms"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Basic Checks
+              </button>
+            </div>
+
+            <!-- CHECK BUILDER ROW -->
+            <fieldset class="check-builder" aria-label="Add a new assertion check">
+              <legend class="sr-only">Assertion check builder</legend>
+
+              <label for="check-type" class="sr-only">Check type</label>
+              <select
+                id="check-type"
+                class="check-select"
+                aria-label="Check type"
+                data-tooltip="What to assert"
+              >
+                <option value="status">Status code</option>
+                <option value="field">JSON field</option>
+                <option value="json-valid">Valid JSON</option>
+                <option value="time">Max time (ms)</option>
+                <option value="header">Header match</option>
+              </select>
+
+              <label for="check-path" class="sr-only">Field or header name</label>
+              <input
+                id="check-path"
+                type="text"
+                class="check-input"
+                placeholder="Field / Header (e.g. id)"
+                aria-label="Check field or header path"
+              />
+
+              <label for="check-expected" class="sr-only">Expected value</label>
+              <input
+                id="check-expected"
+                type="text"
+                class="check-input"
+                placeholder="Expected value"
+                aria-label="Expected value for check"
+              />
+
+              <button
+                id="add-check"
+                type="button"
+                class="btn-secondary"
+                aria-label="Add this check to the list"
+                data-tooltip="Add assertion to run list"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add
+              </button>
+            </fieldset>
+
+            <!-- ACTIVE CHECKS LIST -->
+            <div id="check-list" class="checks-chips-grid" aria-label="Active checks" aria-live="polite">
+              <!-- Populated by app.js; empty hint injected by ui.js -->
+            </div>
+          </section>
+        </div><!-- /left column -->
+
+        <!-- ─────────────────────────────────────────────
+             RIGHT COLUMN
+             ───────────────────────────────────────────── -->
+        <div class="column-pane">
+
+          <!-- RESPONSE CARD (revealed by app.js via removeAttribute('hidden')) -->
+          <section id="result" class="card card-response response-card" hidden aria-labelledby="response-title" aria-live="polite">
+
+            <div class="card-header">
+              <div class="card-title-group">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <h2 id="response-title" class="card-title">Response Overview</h2>
+              </div>
+            </div>
+
+            <!-- STAT TILES -->
+            <div class="stat-tiles-row" role="list" aria-label="Response statistics">
+              <div class="stat-tile" role="listitem">
+                <div class="stat-tile-icon icon-status" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4l3 3"/>
+                  </svg>
+                </div>
+                <span class="stat-label">HTTP Status</span>
+                <span id="status" class="pill good" aria-label="HTTP status">200 OK</span>
+              </div>
+              <div class="stat-tile" role="listitem">
+                <div class="stat-tile-icon icon-time" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </div>
+                <span class="stat-label">Response Time</span>
+                <span id="time" class="stat-mono" aria-label="Response time">—</span>
+              </div>
+              <div class="stat-tile" role="listitem">
+                <div class="stat-tile-icon icon-size" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <polyline points="21 8 21 21 3 21 3 8"/>
+                    <rect x="1" y="3" width="22" height="5"/>
+                    <line x1="10" y1="12" x2="14" y2="12"/>
+                  </svg>
+                </div>
+                <span class="stat-label">Payload Size</span>
+                <span id="size" class="stat-mono" aria-label="Payload size">—</span>
+              </div>
+            </div>
+
+            <!-- SUMMARY BANNER -->
+            <div id="summary" class="summary info" role="status" aria-live="polite">
+              <!-- Progress ring + text injected by ui.js / updated by app.js -->
+              <span>Awaiting validation…</span>
+            </div>
+
+            <!-- CHECK RESULTS -->
+            <div class="results-section">
+              <h3 class="results-subtitle">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Assertion Results
+              </h3>
+              <ul id="check-results" class="check-results-list" aria-label="Check results" aria-live="polite"></ul>
+            </div>
+
+            <!-- RESPONSE BODY PANEL -->
+            <div class="code-panel" aria-label="Response body">
+              <div class="code-panel-header">
+                <span class="code-title">Response Body</span>
+                <button
+                  id="btn-copy-body"
+                  type="button"
+                  class="btn-copy"
+                  aria-label="Copy response body to clipboard"
+                  data-tooltip="Copy body to clipboard"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy
+                </button>
+              </div>
+              <pre id="resp-body" class="code-block" tabindex="0" aria-label="Response body content"></pre>
+            </div>
+
+            <!-- RESPONSE HEADERS PANEL -->
+            <div class="code-panel" aria-label="Response headers">
+              <div class="code-panel-header">
+                <span class="code-title">Response Headers</span>
+                <button
+                  id="btn-copy-headers"
+                  type="button"
+                  class="btn-copy"
+                  aria-label="Copy response headers to clipboard"
+                  data-tooltip="Copy headers to clipboard"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy
+                </button>
+              </div>
+              <pre id="resp-headers" class="code-block" tabindex="0" aria-label="Response headers content"></pre>
+            </div>
+          </section>
+
+          <!-- EMPTY STATE (shown before first response) -->
+          <div id="empty-state-card" class="card empty-state-panel" aria-label="Empty state — no response yet">
+            <div class="empty-state-graphic" aria-hidden="true">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="url(#grad-empty)" stroke-width="1.8" fill="rgba(99,102,241,0.08)" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="m9 12 2 2 4-4" stroke="url(#grad-empty)" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <defs>
+                  <linearGradient id="grad-empty" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#6366f1"/>
+                    <stop offset="100%" stop-color="#ec4899"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <h3 class="empty-title">Send your first request to see results</h3>
+            <p class="empty-desc">
+              Configure your endpoint above, add pass/fail checks, then click
+              <strong>Send</strong> — or try the <strong>Load example</strong> button to jump straight in.
+            </p>
+          </div>
+
+        </div><!-- /right column -->
+      </main>
+
+      <!-- FOOTER -->
+      <footer class="app-footer" role="contentinfo">
+        <span>
+          <span class="footer-logo">API Sentinel</span>
+          <span class="footer-sep"> — </span>
+          Built at the buildathon
+        </span>
+        <span class="footer-sep">·</span>
+        <span>Zero dependencies · Native Fetch · WCAG AA</span>
+      </footer>
+
+    </div><!-- /app-layout -->
+
+    <!-- Scripts: validator → app → ui (order matters) -->
+    <script src="validator.js"></script>
+    <script src="app.js"></script>
+    <script src="ui.js"></script>
+  </body>
+</html>

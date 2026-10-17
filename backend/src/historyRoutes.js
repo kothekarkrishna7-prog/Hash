@@ -71,151 +71,191 @@ export function recordRequestHistory(userId, data) {
 export function setupHistoryRoutes(router) {
   // GET /api/history (Paginated, Searchable, Filterable)
   router.get('/history', requireAuth, (req, res) => {
-    const userId = req.user.id;
-    const {
-      search = '',
-      method = '',
-      result = '',
-      statusCode = '',
-      startDate = '',
-      endDate = '',
-      page = 1,
-      limit = 10
-    } = req.query;
+    try {
+      const userId = req.user.id;
+      const {
+        search = '',
+        method = '',
+        result = '',
+        statusCode = '',
+        startDate = '',
+        endDate = '',
+        page = 1,
+        limit = 10
+      } = req.query;
 
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
-    const offset = (pageNum - 1) * limitNum;
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+      const offset = (pageNum - 1) * limitNum;
 
-    const conditions = ['user_id = ?'];
-    const params = [userId];
+      const conditions = ['user_id = ?'];
+      const params = [userId];
 
-    if (search && search.trim()) {
-      conditions.push('url LIKE ?');
-      params.push(`%${search.trim()}%`);
-    }
-
-    if (method && method.trim() && method !== 'ALL') {
-      conditions.push('method = ?');
-      params.push(method.trim().toUpperCase());
-    }
-
-    if (result && result.trim() && result !== 'ALL') {
-      conditions.push('execution_result = ?');
-      params.push(result.trim().toLowerCase());
-    }
-
-    if (statusCode && statusCode.trim() && statusCode !== 'ALL') {
-      if (statusCode === '2xx') {
-        conditions.push('status_code >= 200 AND status_code < 300');
-      } else if (statusCode === '3xx') {
-        conditions.push('status_code >= 300 AND status_code < 400');
-      } else if (statusCode === '4xx') {
-        conditions.push('status_code >= 400 AND status_code < 500');
-      } else if (statusCode === '5xx') {
-        conditions.push('status_code >= 500');
-      } else if (!isNaN(parseInt(statusCode, 10))) {
-        conditions.push('status_code = ?');
-        params.push(parseInt(statusCode, 10));
+      if (search && search.trim()) {
+        conditions.push('url LIKE ?');
+        params.push(`%${search.trim()}%`);
       }
+
+      if (method && method.trim() && method !== 'ALL') {
+        conditions.push('method = ?');
+        params.push(method.trim().toUpperCase());
+      }
+
+      if (result && result.trim() && result !== 'ALL') {
+        conditions.push('execution_result = ?');
+        params.push(result.trim().toLowerCase());
+      }
+
+      if (statusCode && statusCode.trim() && statusCode !== 'ALL') {
+        if (statusCode === '2xx') {
+          conditions.push('status_code >= 200 AND status_code < 300');
+        } else if (statusCode === '3xx') {
+          conditions.push('status_code >= 300 AND status_code < 400');
+        } else if (statusCode === '4xx') {
+          conditions.push('status_code >= 400 AND status_code < 500');
+        } else if (statusCode === '5xx') {
+          conditions.push('status_code >= 500');
+        } else if (!isNaN(parseInt(statusCode, 10))) {
+          conditions.push('status_code = ?');
+          params.push(parseInt(statusCode, 10));
+        }
+      }
+
+      if (startDate && startDate.trim()) {
+        conditions.push('timestamp >= ?');
+        params.push(startDate.trim());
+      }
+
+      if (endDate && endDate.trim()) {
+        conditions.push('timestamp <= ?');
+        params.push(endDate.trim());
+      }
+
+      const whereClause = conditions.join(' AND ');
+
+      // Total count
+      const countRow = db.prepare(`SELECT COUNT(*) as count FROM request_history WHERE ${whereClause}`).get(...params);
+      const total = Number(countRow?.count || 0);
+
+      // Records
+      const records = db.prepare(`
+        SELECT 
+          id, url, method, timestamp, status_code, status_text,
+          time_ms, execution_result, total_checks, passed_checks, failed_checks,
+          expected_status, size_bytes, error_message, error_code
+        FROM request_history
+        WHERE ${whereClause}
+        ORDER BY timestamp DESC
+        LIMIT ? OFFSET ?
+      `).all(...params, limitNum, offset);
+
+      return res.json({
+        records,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum) || 1
+      });
+    } catch (err) {
+      console.error('[History API Error] Failed to retrieve history:', err);
+      return res.status(500).json({
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'An error occurred while querying request history: ' + err.message
+        }
+      });
     }
-
-    if (startDate && startDate.trim()) {
-      conditions.push('timestamp >= ?');
-      params.push(startDate.trim());
-    }
-
-    if (endDate && endDate.trim()) {
-      conditions.push('timestamp <= ?');
-      params.push(endDate.trim());
-    }
-
-    const whereClause = conditions.join(' AND ');
-
-    // Total count
-    const countRow = db.prepare(`SELECT COUNT(*) as count FROM request_history WHERE ${whereClause}`).get(...params);
-    const total = Number(countRow.count || 0);
-
-    // Records
-    const records = db.prepare(`
-      SELECT 
-        id, url, method, timestamp, status_code, status_text,
-        time_ms, execution_result, total_checks, passed_checks, failed_checks,
-        expected_status, size_bytes, error_message, error_code
-      FROM request_history
-      WHERE ${whereClause}
-      ORDER BY timestamp DESC
-      LIMIT ? OFFSET ?
-    `).all(...params, limitNum, offset);
-
-    return res.json({
-      records,
-      total,
-      page: pageNum,
-      limit: limitNum,
-      totalPages: Math.ceil(total / limitNum) || 1
-    });
   });
 
   // GET /api/history/:id (Detail view, strictly scoped to user)
   router.get('/history/:id', requireAuth, (req, res) => {
-    const record = db.prepare(`
-      SELECT * FROM request_history
-      WHERE id = ? AND user_id = ?
-    `).get(req.params.id, req.user.id);
+    try {
+      const record = db.prepare(`
+        SELECT * FROM request_history
+        WHERE id = ? AND user_id = ?
+      `).get(req.params.id, req.user.id);
 
-    if (!record) {
-      return res.status(404).json({
-        error: { code: 'NOT_FOUND', message: 'History record not found or access denied.' }
+      if (!record) {
+        return res.status(404).json({
+          error: { code: 'NOT_FOUND', message: 'History record not found or access denied.' }
+        });
+      }
+
+      // Parse JSON headers safely
+      let requestHeaders = {};
+      let responseHeaders = {};
+      try {
+        if (record.request_headers) requestHeaders = JSON.parse(record.request_headers);
+      } catch {}
+      try {
+        if (record.response_headers) responseHeaders = JSON.parse(record.response_headers);
+      } catch {}
+
+      return res.json({
+        record: {
+          ...record,
+          request_headers: requestHeaders,
+          response_headers: responseHeaders
+        }
+      });
+    } catch (err) {
+      console.error('[History API Error] Failed to retrieve record detail:', err);
+      return res.status(500).json({
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'An error occurred while fetching history record: ' + err.message
+        }
       });
     }
-
-    // Parse JSON headers safely
-    let requestHeaders = {};
-    let responseHeaders = {};
-    try {
-      if (record.request_headers) requestHeaders = JSON.parse(record.request_headers);
-    } catch {}
-    try {
-      if (record.response_headers) responseHeaders = JSON.parse(record.response_headers);
-    } catch {}
-
-    return res.json({
-      record: {
-        ...record,
-        request_headers: requestHeaders,
-        response_headers: responseHeaders
-      }
-    });
   });
 
   // DELETE /api/history/:id (Delete single record)
   router.delete('/history/:id', requireAuth, (req, res) => {
-    const result = db.prepare(`
-      DELETE FROM request_history
-      WHERE id = ? AND user_id = ?
-    `).run(req.params.id, req.user.id);
+    try {
+      const result = db.prepare(`
+        DELETE FROM request_history
+        WHERE id = ? AND user_id = ?
+      `).run(req.params.id, req.user.id);
 
-    if (result.changes === 0) {
-      return res.status(404).json({
-        error: { code: 'NOT_FOUND', message: 'History record not found or already deleted.' }
+      if (result.changes === 0) {
+        return res.status(404).json({
+          error: { code: 'NOT_FOUND', message: 'History record not found or already deleted.' }
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'History record deleted.'
+      });
+    } catch (err) {
+      console.error('[History API Error] Failed to delete record:', err);
+      return res.status(500).json({
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'An error occurred while deleting history record: ' + err.message
+        }
       });
     }
-
-    return res.json({
-      success: true,
-      message: 'History record deleted.'
-    });
   });
 
   // DELETE /api/history (Clear entire history for user)
   router.delete('/history', requireAuth, (req, res) => {
-    const result = db.prepare('DELETE FROM request_history WHERE user_id = ?').run(req.user.id);
+    try {
+      const result = db.prepare('DELETE FROM request_history WHERE user_id = ?').run(req.user.id);
 
-    return res.json({
-      success: true,
-      deletedCount: result.changes,
-      message: 'All request history cleared successfully.'
-    });
+      return res.json({
+        success: true,
+        deletedCount: result.changes,
+        message: 'All request history cleared successfully.'
+      });
+    } catch (err) {
+      console.error('[History API Error] Failed to clear history:', err);
+      return res.status(500).json({
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'An error occurred while clearing history: ' + err.message
+        }
+      });
+    }
   });
 }

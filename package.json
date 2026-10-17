@@ -11,6 +11,7 @@
     "test:frontend": "node frontend/testValidation.js",
     "test:auth": "node backend/tests/testAuthAndHistory.js",
     "test:upgrade": "node tests/fullUpgradeTest.js",
+    "test:flow": "node tests/verifyFlowAndEdgeCases.js",
     "test": "node backend/tests/verifyBackend.js && node frontend/testValidation.js",
     "build": "npm.cmd --prefix frontend run build"
   },

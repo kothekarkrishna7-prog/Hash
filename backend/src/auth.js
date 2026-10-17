@@ -200,6 +200,7 @@ export function setupAuthRoutes(router) {
         email: cleanEmail,
         createdAt: now
       },
+      token,
       message: 'Registration successful.'
     });
   });
@@ -250,6 +251,7 @@ export function setupAuthRoutes(router) {
         email: user.email,
         createdAt: user.created_at
       },
+      token,
       message: 'Login successful.'
     });
   });
@@ -279,6 +281,9 @@ export function setupAuthRoutes(router) {
       });
     }
 
-    return res.json({ user });
+    return res.json({
+      user,
+      token: token || user.sessionToken || null
+    });
   });
 }

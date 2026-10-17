@@ -1,184 +1,481 @@
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
+/* ==========================================================================
+   API SENTINEL — UI POLISH LAYER
+   Loaded AFTER index.css (see `import './App.css'` in App.jsx).
+   Every selector is prefixed with .app-container so it safely overrides
+   index.css without touching it. Delete this file + that import to undo.
+   ========================================================================== */
+
+:root {
+  --grid-line: rgba(255, 255, 255, 0.03);
+  --header-glass: rgba(15, 23, 42, 0.72);
+  --ring-accent: 0 0 0 3px rgba(99, 102, 241, 0.22);
+}
+[data-theme="light"] {
+  --grid-line: rgba(15, 23, 42, 0.045);
+  --header-glass: rgba(255, 255, 255, 0.8);
+  --ring-accent: 0 0 0 3px rgba(99, 102, 241, 0.16);
 }
 
-.hero {
+/* --------------------------------------------------------------------------
+   Ambient background: soft glow + faint grid that fades out downwards
+   -------------------------------------------------------------------------- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.35);
+  color: var(--text-highlight);
+}
+
+.app-container {
   position: relative;
+  z-index: 1;
+  padding-top: 1rem;
+}
 
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
+/* --------------------------------------------------------------------------
+   Header: sticky glass bar with accent hairline
+   -------------------------------------------------------------------------- */
+@media (min-width: 1081px) and (min-height: 760px) {
+  .app-container .app-header-container {
+    position: sticky;
+    top: 0.75rem;
+    z-index: 50;
   }
 }
 
-#center {
+.app-container .app-header {
+  position: relative;
+  overflow: hidden;
+  background: var(--header-glass);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  padding: 0.85rem 1.25rem;
+}
+.app-container .app-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.9), rgba(99, 102, 241, 0.9), transparent);
+  opacity: 0.8;
+}
+
+.app-container .brand-logo {
+  box-shadow: var(--shadow-glow-accent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.app-container .brand-text h1 {
+  font-size: 1.25rem;
+}
+.app-container .brand-text p {
+  font-size: 0.78rem;
+  margin-top: 1px;
+}
+
+/* Navigation: pill tabs with a glowing active dot */
+.app-container .header-nav {
+  background: var(--bg-surface-subtle);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.app-container .nav-link {
+  position: relative;
+  border: 1px solid transparent;
+}
+.app-container .nav-link svg {
+  opacity: 0.75;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+.app-container .nav-link:hover svg {
+  opacity: 1;
+}
+.app-container .nav-link.active {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-card);
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(99, 102, 241, 0.12);
+}
+.app-container .nav-link.active svg {
+  color: var(--accent-violet);
+  opacity: 1;
+}
+.app-container .nav-link.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 16px;
+  height: 2px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.8);
+}
+
+/* Header actions */
+.app-container .auth-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+.app-container .btn-compact {
+  font-size: 0.78rem;
+  padding: 0.4rem 0.8rem;
+}
+.app-container .backend-status-pill {
+  background: var(--bg-surface-subtle);
+}
+
+/* --------------------------------------------------------------------------
+   Tester sub-bar
+   -------------------------------------------------------------------------- */
+.app-container .tester-sub-bar {
+  background: var(--header-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.app-container .sub-bar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+.app-container .sub-bar-label {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.app-container .history-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+}
+.app-container .history-status.active {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+}
+.app-container .history-status.hint {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform var(--transition-fast);
+}
+.app-container .history-status.hint:hover {
+  transform: translateY(-1px);
+}
+.app-container .history-status .dot-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.app-container .preset-select {
+  padding: 0.4rem 0.8rem;
+  min-width: 260px;
+  max-width: 100%;
+}
+.app-container .preset-select:focus {
+  border-color: var(--border-focus);
+  box-shadow: var(--ring-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Cards
+   -------------------------------------------------------------------------- */
+.app-container .view-column {
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
+  gap: 1.25rem;
+  min-width: 0;
 }
 
-#next-steps {
-  display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
-}
-
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
-
-.ticks {
+.app-container .card {
   position: relative;
-  width: 100%;
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 1.35rem;
+}
+.app-container .card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-card), 0 0 0 1px rgba(99, 102, 241, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.app-container .card-header {
+  padding-bottom: 0.8rem;
+}
+.app-container .card-title {
+  font-size: 0.98rem;
+}
+.app-container .card-title svg {
+  color: var(--accent-violet);
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
+/* --------------------------------------------------------------------------
+   Request command bar
+   -------------------------------------------------------------------------- */
+.app-container .url-bar-group {
+  padding: 0.3rem;
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.app-container .url-bar-group:focus-within {
+  box-shadow: var(--ring-accent), inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.app-container .method-select {
+  background: var(--bg-surface-elevated);
+  border-color: transparent;
+  letter-spacing: 0.02em;
+}
+.app-container .method-select:hover {
+  border-color: var(--border-hover);
+}
+.app-container .url-input {
+  font-size: 0.9rem;
+}
+.app-container .btn-send {
+  padding: 0.6rem 1.3rem;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 14px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.app-container .btn-send:hover:not(:disabled) {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 6px 20px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
 
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
+/* Inputs: one consistent focus ring */
+.app-container .header-input:focus,
+.app-container .form-input:focus,
+.app-container .body-textarea:focus,
+.app-container .tags-input-container:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: var(--ring-accent);
+}
+.app-container .header-input:hover,
+.app-container .form-input:hover,
+.app-container .body-textarea:hover {
+  border-color: var(--border-hover);
+}
+
+/* Secondary buttons */
+.app-container .btn-secondary {
+  box-shadow: var(--shadow-sm);
+}
+.app-container .btn-secondary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Inner tabs: clean underline style */
+.app-container .tab-row {
+  gap: 0.25rem;
+  padding-bottom: 0;
+}
+.app-container .tab-btn {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.app-container .tab-btn.active {
+  background: transparent;
+  color: var(--text-highlight);
+  border-bottom: 2px solid var(--accent-violet);
+}
+
+/* --------------------------------------------------------------------------
+   Response & results
+   -------------------------------------------------------------------------- */
+.app-container .response-overview-bar {
+  background: var(--bg-surface-subtle);
+}
+.app-container .metric-pill {
+  box-shadow: var(--shadow-sm);
+}
+.app-container .status-badge {
+  box-shadow: 0 0 0 3px transparent;
+}
+.app-container .status-badge.status-2xx {
+  box-shadow: var(--shadow-glow-success);
+}
+.app-container .status-badge.status-5xx {
+  box-shadow: var(--shadow-glow-danger);
+}
+
+.app-container .code-viewer-container {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), var(--shadow-sm);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.app-container .viewer-top-bar {
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+.app-container .btn-copy:active {
+  transform: scale(0.96);
+}
+
+.app-container .summary-banner {
+  padding: 0.85rem 1.1rem;
+}
+.app-container .summary-banner.ALL_PASSED {
+  box-shadow: var(--shadow-glow-success);
+}
+.app-container .summary-banner.SOME_FAILED {
+  box-shadow: var(--shadow-glow-danger);
+}
+.app-container .summary-metric-card {
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+.app-container .summary-metric-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+}
+.app-container .assertion-card:hover {
+  transform: translateX(2px);
+  border-color: var(--border-hover);
+}
+
+/* Empty & loading states */
+.app-container .state-box {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08), transparent 65%),
+    var(--bg-surface-subtle);
+  padding: 3rem 1.5rem;
+}
+.app-container .state-icon {
+  width: 60px;
+  height: 60px;
+  box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.07), var(--shadow-glow-accent);
+}
+
+/* --------------------------------------------------------------------------
+   Dashboard & history
+   -------------------------------------------------------------------------- */
+.app-container .stat-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.app-container .stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-primary);
+  opacity: 0.7;
+}
+.app-container .stat-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-card), var(--shadow-glow-accent);
+}
+.app-container .stat-card-value {
+  letter-spacing: -0.02em;
+}
+
+.app-container .history-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.app-container .history-table tbody tr {
+  transition: background var(--transition-fast);
+}
+.app-container .history-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* --------------------------------------------------------------------------
+   Modal
+   -------------------------------------------------------------------------- */
+.app-container .modal-container {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(99, 102, 241, 0.12);
+}
+.app-container .modal-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Footer
+   -------------------------------------------------------------------------- */
+.app-container .app-footer {
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  gap: 0.75rem;
+}
+.app-container .footer-brand {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 640px;
+}
+.app-container .footer-brand strong {
+  color: var(--text-main);
+}
+.app-container .footer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.app-container .footer-chip {
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.2rem 0.6rem;
+  color: var(--text-muted);
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .app-container .app-header {
+    padding: 0.85rem 1rem;
   }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
+  .app-container .nav-link.active::after {
+    display: none;
+  }
+  .app-container .user-pill-name {
+    display: none;
+  }
+  .app-container .preset-select {
+    min-width: 0;
+    width: 100%;
+  }
+  .app-container .sub-bar-group {
+    width: 100%;
+  }
+  .app-container .card {
+    padding: 1.1rem;
   }
 }

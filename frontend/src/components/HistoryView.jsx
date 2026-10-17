@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import HistoryDetailModal from './HistoryDetailModal.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
-export default function HistoryView({ backendUrl, onRerunRequest, onNavigateToTester }) {
+export default function HistoryView({
+  backendUrl,
+  onRerunRequest,
+  onNavigateToTester,
+  refreshTrigger,
+  onOpenAuthModal
+}) {
+  const { isAuthenticated, authFetch } = useAuth();
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -17,10 +26,16 @@ export default function HistoryView({ backendUrl, onRerunRequest, onNavigateToTe
 
   // Selected record for detail modal
   const [selectedRecord, setSelectedRecord] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchHistory = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      setFetchError(null);
+      return;
+    }
+
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams();
       if (search.trim()) params.append('search', search.trim());
@@ -31,48 +46,43 @@ export default function HistoryView({ backendUrl, onRerunRequest, onNavigateToTe
       params.append('page', String(page));
       params.append('limit', '10');
 
-      const res = await fetch(`${backendUrl}/api/history?${params.toString()}`, {
-        credentials: 'include'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRecords(data.records || []);
-        setTotal(data.total || 0);
-        setTotalPages(data.totalPages || 1);
+      const res = await authFetch(`${backendUrl}/api/history?${params.toString()}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `Failed to fetch history (HTTP ${res.status}).`);
       }
+      const data = await res.json();
+      setRecords(data.records || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error('Failed to load history:', err);
+      setFetchError(err.message || 'Unable to retrieve request history.');
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, search, method, statusCode, startDate, endDate, page]);
+  }, [backendUrl, search, method, statusCode, startDate, endDate, page, isAuthenticated, authFetch]);
 
   useEffect(() => {
     fetchHistory();
-  }, [fetchHistory]);
+  }, [fetchHistory, refreshTrigger]);
 
   const handleOpenDetail = async (id) => {
-    setDetailLoading(true);
     try {
-      const res = await fetch(`${backendUrl}/api/history/${id}`, {
-        credentials: 'include'
-      });
+      const res = await authFetch(`${backendUrl}/api/history/${id}`);
       if (res.ok) {
         const data = await res.json();
         setSelectedRecord(data.record);
       }
     } catch (err) {
       console.error('Failed to fetch history details:', err);
-    } finally {
-      setDetailLoading(false);
     }
   };
 
   const handleDeleteRecord = async (id) => {
     try {
-      const res = await fetch(`${backendUrl}/api/history/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const res = await authFetch(`${backendUrl}/api/history/${id}`, {
+        method: 'DELETE'
       });
       if (res.ok) {
         setRecords((prev) => prev.filter((r) => r.id !== id));
@@ -88,9 +98,8 @@ export default function HistoryView({ backendUrl, onRerunRequest, onNavigateToTe
       return;
     }
     try {
-      const res = await fetch(`${backendUrl}/api/history`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const res = await authFetch(`${backendUrl}/api/history`, {
+        method: 'DELETE'
       });
       if (res.ok) {
         setRecords([]);
@@ -110,6 +119,41 @@ export default function HistoryView({ backendUrl, onRerunRequest, onNavigateToTe
     setEndDate('');
     setPage(1);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="history-page">
+        <div className="card state-box" style={{ padding: '3.5rem 2rem' }}>
+          <div className="state-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <div className="state-title">Sign In to View Request History</div>
+          <div className="state-desc" style={{ maxWidth: '420px', margin: '0 auto' }}>
+            API Sentinel logs all requests, response headers, payloads, latency, and assertion reports to your user account.
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+            <button
+              type="button"
+              className="btn-send"
+              onClick={onOpenAuthModal}
+            >
+              🔐 Sign In or Create Account
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onNavigateToTester}
+            >
+              Open API Tester
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="history-page">
@@ -225,6 +269,28 @@ export default function HistoryView({ backendUrl, onRerunRequest, onNavigateToTe
           <div className="state-box" style={{ padding: '3rem' }}>
             <div className="spinner" />
             <div className="state-title">Loading history...</div>
+          </div>
+        ) : fetchError ? (
+          <div className="state-box" style={{ padding: '3rem' }}>
+            <div className="state-icon" style={{ color: 'var(--color-danger)' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <div className="state-title" style={{ color: 'var(--color-danger)' }}>Unable to Load Request History</div>
+            <div className="state-desc" style={{ maxWidth: '460px', margin: '0.5rem auto' }}>
+              {fetchError}
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={fetchHistory}
+              style={{ marginTop: '0.75rem' }}
+            >
+              🔄 Retry Loading History
+            </button>
           </div>
         ) : records.length === 0 ? (
           <div className="state-box">

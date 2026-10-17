@@ -17,42 +17,52 @@ export function setupUserRoutes(router) {
     }
 
     // Compute statistics directly from request_history
-    const stats = db.prepare(`
-      SELECT 
-        COUNT(*) as total_requests,
-        SUM(CASE WHEN status_code >= 200 AND status_code < 400 THEN 1 ELSE 0 END) as successful_responses,
-        SUM(CASE WHEN execution_result != 'success' THEN 1 ELSE 0 END) as failed_executions,
-        SUM(passed_checks) as total_checks_passed,
-        SUM(failed_checks) as total_checks_failed
-      FROM request_history
-      WHERE user_id = ?
-    `).get(userId);
+    try {
+      const stats = db.prepare(`
+        SELECT 
+          COUNT(*) as total_requests,
+          SUM(CASE WHEN status_code >= 200 AND status_code < 300 THEN 1 ELSE 0 END) as successful_responses,
+          SUM(CASE WHEN (status_code IS NULL OR status_code < 200 OR status_code >= 300) THEN 1 ELSE 0 END) as failed_executions,
+          SUM(CASE WHEN total_checks > 0 AND failed_checks = 0 THEN 1 ELSE 0 END) as tests_passed_validation,
+          SUM(CASE WHEN total_checks > 0 THEN 1 ELSE 0 END) as tests_with_validation,
+          SUM(passed_checks) as total_checks_passed,
+          SUM(failed_checks) as total_checks_failed
+        FROM request_history
+        WHERE user_id = ?
+      `).get(userId);
 
-    const totalRequests = Number(stats.total_requests || 0);
-    const successfulResponses = Number(stats.successful_responses || 0);
-    const failedExecutions = Number(stats.failed_executions || 0);
-    const checksPassed = Number(stats.total_checks_passed || 0);
-    const checksFailed = Number(stats.total_checks_failed || 0);
-    const totalChecks = checksPassed + checksFailed;
-    const validationPassRate = totalChecks > 0 ? Math.round((checksPassed / totalChecks) * 100) : null;
+      const totalRequests = Number(stats?.total_requests || 0);
+      const successfulResponses = Number(stats?.successful_responses || 0);
+      const failedExecutions = Number(stats?.failed_executions || 0);
+      const checksPassed = Number(stats?.total_checks_passed || 0);
+      const checksFailed = Number(stats?.total_checks_failed || 0);
+      const testsWithVal = Number(stats?.tests_with_validation || 0);
+      const testsPassedVal = Number(stats?.tests_passed_validation || 0);
+      const validationPassRate = testsWithVal > 0 ? Math.round((testsPassedVal / testsWithVal) * 100) : null;
 
-    return res.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at
-      },
-      stats: {
-        totalRequests,
-        successfulResponses,
-        failedExecutions,
-        totalChecksPassed: checksPassed,
-        totalChecksFailed: checksFailed,
-        validationPassRate
-      }
-    });
+      return res.json({
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at
+        },
+        stats: {
+          totalRequests,
+          successfulResponses,
+          failedExecutions,
+          totalChecksPassed: checksPassed,
+          totalChecksFailed: checksFailed,
+          validationPassRate
+        }
+      });
+    } catch (err) {
+      console.error('[User Profile Error]', err);
+      return res.status(500).json({
+        error: { code: 'DATABASE_ERROR', message: 'Failed to retrieve profile data: ' + err.message }
+      });
+    }
   });
 
   // PUT /api/user/profile (Edit Display Name)
@@ -162,47 +172,59 @@ export function setupUserRoutes(router) {
 
   // GET /api/dashboard/stats
   router.get('/dashboard/stats', requireAuth, (req, res) => {
-    const userId = req.user.id;
+    try {
+      const userId = req.user.id;
 
-    // Aggregate stats
-    const stats = db.prepare(`
-      SELECT 
-        COUNT(*) as total_requests,
-        SUM(CASE WHEN status_code >= 200 AND status_code < 400 THEN 1 ELSE 0 END) as successful_responses,
-        SUM(CASE WHEN execution_result != 'success' THEN 1 ELSE 0 END) as failed_executions,
-        SUM(passed_checks) as total_checks_passed,
-        SUM(failed_checks) as total_checks_failed
-      FROM request_history
-      WHERE user_id = ?
-    `).get(userId);
+      // Aggregate stats: 200-299 = Successful HTTP; Non-2xx / error = Failed executions
+      const stats = db.prepare(`
+        SELECT 
+          COUNT(*) as total_requests,
+          SUM(CASE WHEN status_code >= 200 AND status_code < 300 THEN 1 ELSE 0 END) as successful_responses,
+          SUM(CASE WHEN (status_code IS NULL OR status_code < 200 OR status_code >= 300) THEN 1 ELSE 0 END) as failed_executions,
+          SUM(CASE WHEN total_checks > 0 AND failed_checks = 0 THEN 1 ELSE 0 END) as tests_passed_validation,
+          SUM(CASE WHEN total_checks > 0 THEN 1 ELSE 0 END) as tests_with_validation,
+          SUM(passed_checks) as total_checks_passed,
+          SUM(failed_checks) as total_checks_failed
+        FROM request_history
+        WHERE user_id = ?
+      `).get(userId);
 
-    const totalRequests = Number(stats.total_requests || 0);
-    const successfulResponses = Number(stats.successful_responses || 0);
-    const failedExecutions = Number(stats.failed_executions || 0);
-    const checksPassed = Number(stats.total_checks_passed || 0);
-    const checksFailed = Number(stats.total_checks_failed || 0);
-    const totalChecks = checksPassed + checksFailed;
-    const validationPassRate = totalChecks > 0 ? Math.round((checksPassed / totalChecks) * 100) : null;
+      const totalRequests = Number(stats?.total_requests || 0);
+      const successfulResponses = Number(stats?.successful_responses || 0);
+      const failedExecutions = Number(stats?.failed_executions || 0);
+      const testsWithVal = Number(stats?.tests_with_validation || 0);
+      const testsPassedVal = Number(stats?.tests_passed_validation || 0);
+      const validationPassRate = testsWithVal > 0 ? Math.round((testsPassedVal / testsWithVal) * 100) : null;
 
-    // Fetch recent 5 requests
-    const recentRequests = db.prepare(`
-      SELECT 
-        id, url, method, timestamp, status_code, status_text, 
-        time_ms, execution_result, total_checks, passed_checks, failed_checks
-      FROM request_history
-      WHERE user_id = ?
-      ORDER BY timestamp DESC
-      LIMIT 5
-    `).all(userId);
+      // Fetch recent 5 requests
+      const recentRequests = db.prepare(`
+        SELECT 
+          id, url, method, timestamp, status_code, status_text, 
+          time_ms, execution_result, total_checks, passed_checks, failed_checks,
+          expected_status, error_message, error_code
+        FROM request_history
+        WHERE user_id = ?
+        ORDER BY timestamp DESC
+        LIMIT 5
+      `).all(userId);
 
-    return res.json({
-      stats: {
-        totalRequests,
-        successfulResponses,
-        failedExecutions,
-        validationPassRate
-      },
-      recentRequests
-    });
+      return res.json({
+        stats: {
+          totalRequests,
+          successfulResponses,
+          failedExecutions,
+          validationPassRate
+        },
+        recentRequests
+      });
+    } catch (err) {
+      console.error('[Dashboard API Error]', err);
+      return res.status(500).json({
+        error: {
+          code: 'DATABASE_ERROR',
+          message: 'An error occurred while computing dashboard statistics: ' + err.message
+        }
+      });
+    }
   });
 }
