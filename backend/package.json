@@ -1,0 +1,17 @@
+{
+  "name": "api-sentinel-backend",
+  "version": "1.0.0",
+  "description": "API Sentinel Backend - Safe HTTP Request Execution Proxy and Validation Engine",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node tests/verifyBackend.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "ipaddr.js": "^2.2.0"
+  }
+}

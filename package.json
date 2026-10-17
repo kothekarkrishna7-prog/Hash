@@ -1,0 +1,25 @@
+{
+  "name": "api-sentinel-project",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "API Sentinel - Lightweight, modern web application for API testing, response inspection, and assertion checks",
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "backend": "node --watch backend/src/server.js",
+    "frontend": "npm.cmd --prefix frontend run dev",
+    "test:backend": "node backend/tests/verifyBackend.js",
+    "test:frontend": "node frontend/testValidation.js",
+    "test": "node backend/tests/verifyBackend.js && node frontend/testValidation.js",
+    "build": "npm.cmd --prefix frontend run build"
+  },
+  "keywords": [
+    "api-testing",
+    "sentinel",
+    "assertions",
+    "ssrf-protection",
+    "rest-api",
+    "developer-tools"
+  ],
+  "author": "API Sentinel Team",
+  "license": "MIT"
+}
