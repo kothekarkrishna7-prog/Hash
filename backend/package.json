@@ -10,6 +10,8 @@
     "test": "node tests/verifyBackend.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "ipaddr.js": "^2.2.0"
