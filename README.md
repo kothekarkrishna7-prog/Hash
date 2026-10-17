@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # API Sentinel PRO 🛡️
 
 > **API Sentinel PRO** is a lightweight, modern web-based developer tool designed to quickly send HTTP requests to public APIs, inspect responses, run deterministic automated validation checks with instant pass/fail summaries, and manage persistent request history with user authentication and profile metrics.
@@ -161,16 +161,19 @@ npm run build
 ## 🔒 Security Configuration & Environment Variables
 
 | Variable | Default | Purpose |
-|---|---|---|
+
 | `PORT` | `3001` | Backend port |
 | `FRONTEND_URL` | `http://localhost:5173` | Allowed CORS origin for credentials |
 | `NODE_ENV` | `development` | In `production`, enforces `Secure` cookies and strict headers |
 | `DB_PATH` | `backend/data/sentinel.db` | Custom location for the SQLite database file |
 
----
+
 
 ## 📄 License
 MIT License. Created for the API Sentinel Project.
-=======
+
 # Hash
->>>>>>> 3b4e5536f1814c53dd2df56dfcedd48c45fb32e5
+ 3b4e5536f1814c53dd2df56dfcedd48c45fb32e5
+
+# Hash
+8907c53611dc8946a0804174199fd60e795128a6
